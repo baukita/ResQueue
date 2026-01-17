@@ -44,25 +44,44 @@ public static class ResQueueExtensions
     }
 
     public static IApplicationBuilder UseResQueue(this WebApplication app, string prefix = "resqueue",
-        Action<RouteGroupBuilder>? configureApi = null)
+        Action<RouteGroupBuilder>? configureApi = null, string? pathBase = null)
     {
         app.UseMiddleware<ResQueueExceptionMiddleware>();
+
+        var fullPrefix = string.IsNullOrEmpty(pathBase)
+            ? prefix
+            : $"{pathBase.Trim('/')}/{prefix}";
 
         app.MapGet("resqueue-4e8efb80-6aae-496f-b8bf-611b63e725bc/config.js", () => Results.Content(
             $$"""
               globalThis.resqueueConfig = {
-                  prefix: "{{prefix}}"
+                  prefix: "{{fullPrefix}}"
               }
               """
             , "text/javascript"
         )).ExcludeFromDescription();
 
         var rewriteOptions = new RewriteOptions()
-            .AddRewrite("^(.*)/$", "$1", false); // Remove trailing slash
+            .AddRedirect($"^{prefix}$", $"{prefix}/")           // Base: add trailing slash
+            .AddRedirect($"^{prefix}/(.+)/$", $"{prefix}/$1");  // Sub-routes: remove trailing slash
+
+        (string Pattern, string Replacement)[] staticRewrites =
+        [
+            ("/assets/(.*)", "/resqueue-4e8efb80-6aae-496f-b8bf-611b63e725bc/assets/$1"),
+            ("/config.js", "/resqueue-4e8efb80-6aae-496f-b8bf-611b63e725bc/config.js"),
+            ("/favicon.ico", "/resqueue-4e8efb80-6aae-496f-b8bf-611b63e725bc/favicon.ico"),
+            ("/api/(.*)", "/resqueue-4e8efb80-6aae-496f-b8bf-611b63e725bc/api/$1"),
+        ];
+
+        rewriteOptions = staticRewrites.Aggregate(rewriteOptions, (opts, rewrite) => opts.AddRewrite(
+            regex: $"^{prefix}{rewrite.Pattern}$",
+            replacement: rewrite.Replacement,
+            skipRemainingRules: true
+        ));
 
         string[] frontendRoutes =
         [
-            "",
+            "/",
             "/overview",
             "/topics",
             "/queues",

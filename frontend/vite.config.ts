@@ -5,7 +5,7 @@ import { defineConfig } from "vite";
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  base: process.env.NODE_ENV === "development" ? undefined : "/resqueue-4e8efb80-6aae-496f-b8bf-611b63e725bc",
+  base: process.env.NODE_ENV === "development" ? "/" : "./",
   plugins: [
     vue(),
     tailwindcss(),
@@ -18,7 +18,7 @@ export default defineConfig({
 
         return html.replace(
           "<!-- inject:resqueue-config-script -->",
-          '<script src="/resqueue-4e8efb80-6aae-496f-b8bf-611b63e725bc/config.js"></script>',
+          '<script src="./config.js"></script>',
         );
       },
     },
